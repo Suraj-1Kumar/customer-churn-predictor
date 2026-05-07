@@ -1,0 +1,33 @@
+# Virtual environment — never push this
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Raw data — too large for git
+data/
+
+# MLflow tracking runs — not needed on Render
+mlruns/
+mlflow.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Env secrets
+.env
+
+# ⚠️  DO NOT add models/ here
+# models/best_model.joblib must be committed
+# so Render can load it at runtime

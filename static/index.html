@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChurnSight — Customer Churn Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  /* ── Reset & Tokens ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080c10;
+    --surface:   #0e1419;
+    --border:    #1c2530;
+    --border2:   #243040;
+    --text:      #c8d8e8;
+    --muted:     #5a7090;
+    --accent:    #00d4ff;
+    --accent2:   #0096cc;
+    --green:     #00e5a0;
+    --amber:     #f5a623;
+    --red:       #ff4d6a;
+    --purple:    #a855f7;
+    --mono:      'Space Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid background ─────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .shell {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,12,16,.85);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .logo-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.5px;
+  }
+
+  .logo-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(0,212,255,.08);
+    border: 1px solid rgba(0,212,255,.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: .5px;
+  }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .35; }
+  }
+
+  /* ── Main grid ───────────────────────────────────────────── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 0;
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 24px;
+    align-items: start;
+    gap: 24px;
+  }
+
+  /* ── Panel base ─────────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+
+  .panel-body { padding: 20px 24px 24px; }
+
+  /* ── Form sections ───────────────────────────────────────── */
+  .form-section {
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .form-grid.full { grid-template-columns: 1fr; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus,
+  select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,.1);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a7090' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+
+  select option { background: #141c24; }
+
+  /* ── Submit button ───────────────────────────────────────── */
+  .btn-predict {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-predict:hover  { opacity: .9; transform: translateY(-1px); }
+  .btn-predict:active { transform: translateY(0); }
+  .btn-predict:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* ── Right panel — results ───────────────────────────────── */
+  .results-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Idle state ─────────────────────────────────────────── */
+  .idle-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 340px;
+    gap: 16px;
+    color: var(--muted);
+    text-align: center;
+    padding: 40px;
+  }
+
+  .idle-icon {
+    width: 64px;
+    height: 64px;
+    border: 2px dashed var(--border2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    opacity: .5;
+  }
+
+  .idle-state p { font-size: 13px; line-height: 1.7; max-width: 260px; }
+
+  /* ── Prediction result card ──────────────────────────────── */
+  .result-card { display: none; }
+  .result-card.visible { display: block; }
+
+  /* ── Gauge ───────────────────────────────────────────────── */
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .gauge-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .gauge-svg { overflow: visible; }
+
+  .gauge-track {
+    fill: none;
+    stroke: var(--border2);
+    stroke-width: 12;
+    stroke-linecap: round;
+  }
+
+  .gauge-fill {
+    fill: none;
+    stroke-width: 12;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),
+                stroke 1.2s ease;
+  }
+
+  .gauge-number {
+    font-family: var(--mono);
+    font-size: 42px;
+    font-weight: 700;
+    fill: #fff;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  .gauge-sub {
+    font-family: var(--sans);
+    font-size: 12px;
+    fill: var(--muted);
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+
+  /* ── Risk tier badge ─────────────────────────────────────── */
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-top: 16px;
+    border: 1px solid;
+    transition: all .6s ease;
+  }
+
+  .risk-low      { color: var(--green);  border-color: rgba(0,229,160,.3);  background: rgba(0,229,160,.08);  }
+  .risk-medium   { color: var(--accent); border-color: rgba(0,212,255,.3);  background: rgba(0,212,255,.08);  }
+  .risk-high     { color: var(--amber);  border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.08); }
+  .risk-critical { color: var(--red);    border-color: rgba(255,77,106,.3); background: rgba(255,77,106,.08); }
+
+  /* ── Metrics grid ────────────────────────────────────────── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .metric {
+    background: var(--surface);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Factors bar ─────────────────────────────────────────── */
+  .factors {
+    padding: 20px 24px;
+  }
+
+  .factors-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .factor-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .factor-name {
+    font-size: 12px;
+    color: var(--text);
+    min-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .factor-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .factor-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .factor-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  /* ── Recommendation box ──────────────────────────────────── */
+  .recommendation {
+    margin: 0 24px 24px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border-left: 3px solid;
+    font-size: 13px;
+    line-height: 1.6;
+    transition: all .6s;
+  }
+
+  .rec-low      { border-color: var(--green);  background: rgba(0,229,160,.06);  color: var(--green);  }
+  .rec-medium   { border-color: var(--accent); background: rgba(0,212,255,.06);  color: var(--accent); }
+  .rec-high     { border-color: var(--amber);  background: rgba(245,166,35,.06); color: var(--amber);  }
+  .rec-critical { border-color: var(--red);    background: rgba(255,77,106,.06); color: var(--red);    }
+
+  /* ── Model info strip ─────────────────────────────────────── */
+  .model-strip {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .model-chip {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 99px;
+    letter-spacing: .5px;
+  }
+
+  /* ── Loading spinner ─────────────────────────────────────── */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: none;
+  }
+
+  .btn-predict.loading .spinner { display: block; }
+  .btn-predict.loading .btn-text { display: none; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error state ─────────────────────────────────────────── */
+  .error-box {
+    display: none;
+    margin: 16px 24px;
+    padding: 12px 16px;
+    background: rgba(255,77,106,.08);
+    border: 1px solid rgba(255,77,106,.25);
+    border-radius: 8px;
+    color: var(--red);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .error-box.visible { display: block; }
+
+  /* ── Footer ─────────────────────────────────────────────── */
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    letter-spacing: .5px;
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; padding: 16px; }
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-name">ChurnSight</span>
+      <span class="logo-tag">ML PIPELINE</span>
+    </div>
+    <div class="header-meta">
+      <span><span class="status-dot"></span>API LIVE</span>
+      <span id="modelBadge">—</span>
+      <span>TELCO · 7K CUSTOMERS</span>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+
+    <!-- LEFT: Input form -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Customer Profile</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">19 FEATURES</span>
+      </div>
+      <div class="panel-body">
+        <form id="churnForm">
+
+          <!-- Account -->
+          <div class="form-section">
+            <div class="section-label">Account</div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Tenure (months)</label>
+                <input type="number" id="tenure" min="0" max="72" value="2" required/>
+              </div>
+              <div class="field">
+                <label>Monthly Charges ($)</label>
+                <input type="number" id="MonthlyCharges" min="0" max="200" step="0.01" value="85.50" required/>
+              </div>
+              <div class="field">
+                <label>Total Charges ($)</label>
+                <input type="number" id="TotalCharges" min="0" step="0.01" placeholder="Auto if blank"/>
+              </div>
+              <div class="field">
+                <label>Contract</label>
+                <select id="Contract">
+                  <option value="Month-to-month" selected>Month-to-month</option>
+                  <option value="One year">One year</option>
+                  <option value="Two year">Two year</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Payment Method</label>
+                <select id="PaymentMethod">
+                  <option value="Electronic check" selected>Electronic check</option>
+                  <option value="Mailed check">Mailed check</option>
+                  <option value="Bank transfer (automatic)">Bank transfer</option>
+                  <option value="Credit card (automatic)">Credit card</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Paperless Billing</label>
+                <select id="PaperlessBilling">
+                  <option value="Yes" selected>Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demographics -->
+          <div class="form-section">
+            <div class="section-label">Demographics</div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Gender</label>
+                <select id="gender">
+                  <option value="Male" selected>Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Senior Citizen</label>
+                <select id="SeniorCitizen">
+                  <option value="0" selected>No</option>
+                  <option value="1">Yes</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Partner</label>
+                <select id="Partner">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Dependents</label>
+                <select id="Dependents">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phone -->
+          <div class="form-section">
+            <div class="section-label">Phone Services</div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Phone Service</label>
+                <select id="PhoneService">
+                  <option value="Yes" selected>Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Multiple Lines</label>
+                <select id="MultipleLines">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No phone service">No phone service</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Internet -->
+          <div class="form-section">
+            <div class="section-label">Internet Services</div>
+            <div class="form-grid">
+              <div class="field">
+                <label>Internet Service</label>
+                <select id="InternetService">
+                  <option value="Fiber optic" selected>Fiber optic</option>
+                  <option value="DSL">DSL</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Online Security</label>
+                <select id="OnlineSecurity">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Online Backup</label>
+                <select id="OnlineBackup">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Device Protection</label>
+                <select id="DeviceProtection">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Tech Support</label>
+                <select id="TechSupport">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Streaming TV</label>
+                <select id="StreamingTV">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Streaming Movies</label>
+                <select id="StreamingMovies">
+                  <option value="No" selected>No</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No internet service">No internet service</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-predict" id="predictBtn">
+            <span class="btn-text">⚡ Predict Churn Risk</span>
+            <div class="spinner"></div>
+          </button>
+
+        </form>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="results-panel">
+
+      <!-- Idle state -->
+      <div class="panel" id="idlePanel">
+        <div class="idle-state">
+          <div class="idle-icon">📊</div>
+          <strong style="color:#fff;font-size:15px">Awaiting Prediction</strong>
+          <p>Fill in the customer profile on the left and click <em>Predict Churn Risk</em> to see the ML model's output.</p>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--border2);margin-top:8px">
+            LightGBM · SMOTE · 28 features · AUC 0.84+
+          </div>
+        </div>
+      </div>
+
+      <!-- Result card (hidden until first prediction) -->
+      <div class="panel result-card" id="resultCard">
+
+        <!-- Gauge -->
+        <div class="gauge-wrap">
+          <div class="gauge-label">Churn Probability</div>
+          <svg class="gauge-svg" width="220" height="130" viewBox="0 0 220 130">
+            <!-- Track arc -->
+            <path class="gauge-track"
+              d="M 20 115 A 90 90 0 0 1 200 115"
+              stroke-dasharray="283"
+              stroke-dashoffset="0"/>
+            <!-- Fill arc -->
+            <path class="gauge-fill" id="gaugeFill"
+              d="M 20 115 A 90 90 0 0 1 200 115"
+              stroke-dasharray="283"
+              stroke-dashoffset="283"/>
+            <!-- Percentage text -->
+            <text class="gauge-number" id="gaugeNumber" x="110" y="100">0%</text>
+            <text class="gauge-sub" id="gaugeSub" x="110" y="122">probability</text>
+          </svg>
+          <span class="risk-badge" id="riskBadge">—</span>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+          <div class="metric">
+            <span class="metric-label">Prediction</span>
+            <span class="metric-value" id="metricPred">—</span>
+            <span class="metric-sub">outcome</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Latency</span>
+            <span class="metric-value" id="metricLatency">—</span>
+            <span class="metric-sub">milliseconds</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Confidence</span>
+            <span class="metric-value" id="metricConf">—</span>
+            <span class="metric-sub">certainty</span>
+          </div>
+        </div>
+
+        <!-- Risk factors -->
+        <div class="factors">
+          <div class="factors-title">Key Churn Signals — This Customer</div>
+          <div id="factorsList"></div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="recommendation" id="recommendation"></div>
+
+        <!-- Model strip -->
+        <div class="model-strip">
+          <span class="model-chip" id="chipModel">—</span>
+          <span class="model-chip" id="chipAuc">—</span>
+          <span class="model-chip">SMOTE BALANCED</span>
+          <span class="model-chip">28 FEATURES</span>
+        </div>
+
+      </div>
+
+      <!-- Error box -->
+      <div class="error-box" id="errorBox"></div>
+
+    </div>
+  </main>
+
+  <footer>
+    ChurnSight · LightGBM + SMOTE · Telco Dataset · 
+    <a href="/docs" target="_blank">API Docs ↗</a> · 
+    <a href="/model/info" target="_blank">Model Info ↗</a>
+  </footer>
+
+</div>
+
+<script>
+  // ── Config ───────────────────────────────────────────────
+  // Uses relative URL — works locally AND on Render
+  const API_BASE = '';
+
+  // ── Load model info on page load ─────────────────────────
+  async function loadModelInfo() {
+    try {
+      const r    = await fetch(`${API_BASE}/model/info`);
+      const data = await r.json();
+      document.getElementById('modelBadge').textContent =
+        `${data.model_type?.toUpperCase()} · AUC ${data.best_auc}`;
+      document.getElementById('chipModel').textContent =
+        `MODEL: ${data.model_type?.toUpperCase()}`;
+      document.getElementById('chipAuc').textContent =
+        `AUC: ${data.best_auc}`;
+    } catch(e) {
+      document.getElementById('modelBadge').textContent = 'API OFFLINE';
+    }
+  }
+  loadModelInfo();
+
+  // ── Gauge animation ───────────────────────────────────────
+  const ARC_LEN = 283;
+
+  function setGauge(prob) {
+    const fill   = document.getElementById('gaugeFill');
+    const number = document.getElementById('gaugeNumber');
+    const offset = ARC_LEN - (ARC_LEN * prob);
+    const pct    = Math.round(prob * 100);
+
+    // Color by risk
+    let color;
+    if      (prob < 0.25) color = '#00e5a0';
+    else if (prob < 0.50) color = '#00d4ff';
+    else if (prob < 0.75) color = '#f5a623';
+    else                  color = '#ff4d6a';
+
+    fill.style.stroke           = color;
+    fill.style.strokeDashoffset = offset;
+    number.textContent          = `${pct}%`;
+    number.style.fill           = color;
+  }
+
+  // ── Risk badge ────────────────────────────────────────────
+  const RISK_CONFIG = {
+    low:      { label: '● LOW RISK',      cls: 'risk-low',      rec: '✓ No action needed. This customer shows strong retention signals. Continue standard engagement.', recCls: 'rec-low' },
+    medium:   { label: '◎ MEDIUM RISK',   cls: 'risk-medium',   rec: '→ Add to watch list. Monitor usage patterns over next 30 days and consider a loyalty check-in.', recCls: 'rec-medium' },
+    high:     { label: '▲ HIGH RISK',     cls: 'risk-high',     rec: '⚠ Proactive outreach recommended. Offer a service upgrade or personalised discount before next billing cycle.', recCls: 'rec-high' },
+    critical: { label: '✕ CRITICAL RISK', cls: 'risk-critical', rec: '🚨 Immediate intervention required. Escalate to retention team. Offer contract incentive within 48 hours.', recCls: 'rec-critical' },
+  };
+
+  function setRiskBadge(tier) {
+    const badge = document.getElementById('riskBadge');
+    const cfg   = RISK_CONFIG[tier] || RISK_CONFIG.medium;
+    badge.className    = `risk-badge ${cfg.cls}`;
+    badge.textContent  = cfg.label;
+    const rec          = document.getElementById('recommendation');
+    rec.className      = `recommendation ${cfg.recCls}`;
+    rec.textContent    = cfg.rec;
+  }
+
+  // ── Compute churn signals from form values ─────────────────
+  function getFactors(data, prob) {
+    const signals = [];
+
+    if (data.Contract === 'Month-to-month')
+      signals.push({ name: 'Month-to-month contract', weight: 0.92, direction: 'risk' });
+    if (data.tenure <= 6)
+      signals.push({ name: 'New customer (≤6 months)', weight: 0.85, direction: 'risk' });
+    if (data.InternetService === 'Fiber optic')
+      signals.push({ name: 'Fiber optic internet', weight: 0.78, direction: 'risk' });
+    if (data.OnlineSecurity === 'No')
+      signals.push({ name: 'No online security', weight: 0.72, direction: 'risk' });
+    if (data.TechSupport === 'No')
+      signals.push({ name: 'No tech support', weight: 0.65, direction: 'risk' });
+    if (data.PaymentMethod === 'Electronic check')
+      signals.push({ name: 'Electronic check payment', weight: 0.60, direction: 'risk' });
+    if (data.Partner === 'Yes')
+      signals.push({ name: 'Has a partner', weight: 0.55, direction: 'safe' });
+    if (data.Contract === 'Two year')
+      signals.push({ name: 'Two-year contract', weight: 0.90, direction: 'safe' });
+    if (data.tenure > 36)
+      signals.push({ name: 'Long-tenure customer', weight: 0.80, direction: 'safe' });
+    if (data.OnlineSecurity === 'Yes')
+      signals.push({ name: 'Has online security', weight: 0.70, direction: 'safe' });
+
+    // Take top 5 by weight
+    return signals.sort((a,b) => b.weight - a.weight).slice(0, 5);
+  }
+
+  function renderFactors(factors) {
+    const list = document.getElementById('factorsList');
+    list.innerHTML = factors.map(f => {
+      const color = f.direction === 'risk' ? '#ff4d6a' : '#00e5a0';
+      const icon  = f.direction === 'risk' ? '↑' : '↓';
+      return `
+        <div class="factor-row">
+          <span class="factor-name">${icon} ${f.name}</span>
+          <div class="factor-bar-track">
+            <div class="factor-bar-fill" style="width:${f.weight*100}%;background:${color}"></div>
+          </div>
+          <span class="factor-val" style="color:${color}">${Math.round(f.weight*100)}%</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Form submit ───────────────────────────────────────────
+  document.getElementById('churnForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn     = document.getElementById('predictBtn');
+    const errBox  = document.getElementById('errorBox');
+    const idle    = document.getElementById('idlePanel');
+    const result  = document.getElementById('resultCard');
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    errBox.classList.remove('visible');
+
+    // Build payload
+    const totalRaw = document.getElementById('TotalCharges').value;
+    const payload  = {
+      tenure           : parseInt(document.getElementById('tenure').value),
+      MonthlyCharges   : parseFloat(document.getElementById('MonthlyCharges').value),
+      TotalCharges     : totalRaw ? parseFloat(totalRaw) : null,
+      gender           : document.getElementById('gender').value,
+      SeniorCitizen    : parseInt(document.getElementById('SeniorCitizen').value),
+      Partner          : document.getElementById('Partner').value,
+      Dependents       : document.getElementById('Dependents').value,
+      PhoneService     : document.getElementById('PhoneService').value,
+      MultipleLines    : document.getElementById('MultipleLines').value,
+      InternetService  : document.getElementById('InternetService').value,
+      OnlineSecurity   : document.getElementById('OnlineSecurity').value,
+      OnlineBackup     : document.getElementById('OnlineBackup').value,
+      DeviceProtection : document.getElementById('DeviceProtection').value,
+      TechSupport      : document.getElementById('TechSupport').value,
+      StreamingTV      : document.getElementById('StreamingTV').value,
+      StreamingMovies  : document.getElementById('StreamingMovies').value,
+      Contract         : document.getElementById('Contract').value,
+      PaperlessBilling : document.getElementById('PaperlessBilling').value,
+      PaymentMethod    : document.getElementById('PaymentMethod').value,
+    };
+
+    try {
+      const res  = await fetch(`${API_BASE}/predict`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const prob = data.churn_probability;
+      const tier = data.risk_tier;
+
+      // Show result, hide idle
+      idle.style.display   = 'none';
+      result.classList.add('visible');
+
+      // Animate gauge
+      setGauge(prob);
+      setRiskBadge(tier);
+
+      // Metrics
+      document.getElementById('metricPred').textContent    =
+        data.churn_prediction === 1 ? 'CHURN' : 'RETAIN';
+      document.getElementById('metricPred').style.color    =
+        data.churn_prediction === 1 ? 'var(--red)' : 'var(--green)';
+      document.getElementById('metricLatency').textContent = `${data.latency_ms}ms`;
+      const conf = prob >= 0.5
+        ? Math.round((prob - 0.5) * 2 * 100)
+        : Math.round((0.5 - prob) * 2 * 100);
+      document.getElementById('metricConf').textContent    = `${conf}%`;
+
+      // Factors
+      renderFactors(getFactors(payload, prob));
+
+    } catch(err) {
+      errBox.textContent = `Error: ${err.message}`;
+      errBox.classList.add('visible');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
