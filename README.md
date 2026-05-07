@@ -25,8 +25,8 @@ EDA → Feature Engineering → XGBoost/LightGBM → MLflow → FastAPI → Dock
 
 ## 🖥️ Live Demo
 
-**Dashboard →** `https://customer-churn-predictor.onrender.com`  
-**Swagger UI →** `https://customer-churn-predictor.onrender.com/docs`
+**Dashboard →** `https://customer-churn-predictor-mymg.onrender.com`  
+**Swagger UI →** `https://customer-churn-predictor-mymg.onrender.com/docs`
 
 > ⚠️ Hosted on Render free tier — may take 30s to wake up on first visit.
 
